@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using APBD03.DAL;
+using APBD03.Middlewares;
 using APBD03.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -30,6 +31,11 @@ namespace APBD03
             services.AddTransient<IStudentsDbService, SqlServerStudentDbService>();
             services.AddSingleton<IDbService, MockDbService>();
             services.AddControllers();
+            services.AddScoped<IStudentsDbService, SqlServerStudentDbService>();
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "Student API", Version = "v1" });
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -39,6 +45,42 @@ namespace APBD03
             {
                 app.UseDeveloperExceptionPage();
             }
+
+
+            app.UseSwagger();
+
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Student API V1");
+            });
+
+            app.UseMiddleware<CustomLoggingMiddleware>();
+
+            app.Use(async (context, next) =>
+            {
+                if (!context.Request.Headers.ContainsKey("Index"))
+                {
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    await context.Response.WriteAsync("Index number required");
+                    return;
+                }
+
+                string index = context.Request.Headers["Index"].ToString();
+
+                var st = service.GetStudentByIndex(index);
+                if (st == null)
+                {
+                    context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                    await context.Response.WriteAsync("Incorrect Index Number");
+                    return;
+                }
+
+                await next();
+            });
+
+
+
+
 
             app.UseHttpsRedirection();
 

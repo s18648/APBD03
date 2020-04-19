@@ -1,4 +1,5 @@
 ﻿using APBD03.DTOs.Requests;
+using APBD03.DTOs.Responses;
 using APBD03.Models;
 using System;
 using System.Collections;
@@ -15,14 +16,92 @@ namespace APBD03.Services
 
 
 
-
-
-
-
-
-        public void EnrollStudent(EnrollStudentRequest req)
+        public EnrollStudentResponse EnrollStudent(EnrollStudentRequest req)
         {
-            throw new NotImplementedException();
+            
+            using (var con = new SqlConnection(@"Data Source=db-mssql;Initial Catalog=s18648;Integrated Security=True"))
+            {
+                con.Open();
+                int idStudy = 1;
+                int IDenroll = 1;
+
+                var tran = con.BeginTransaction();
+
+
+                using (var com = new SqlCommand())
+                {
+                    com.Connection = con;
+                    com.Transaction = tran;
+                    com.CommandText = "@SELECT * FROM Studies s WHERE s.Name = @Name";
+                    com.Parameters.AddWithValue("@Name", req.Studies);
+
+
+                    using (var read = com.ExecuteReader())
+                    {
+                        if(!read.Read())
+                        {
+                            read.Close();
+                            tran.Rollback();
+                            con.Close();
+                            return null;
+                        }
+
+                        idStudy = int.Parse(read["IdStudy"].ToString());
+                    }
+
+                }
+
+
+                using(var com = new SqlCommand())
+                {
+                    com.Connection = con;
+                    com.Transaction = tran;
+                    com.CommandText = "@SELECT * FROM Enrollment e WHERE e.IdStudy = @IDStudy AND e.Semester=1";
+                    com.Parameters.AddWithValue("@IDStudy", idStudy);
+
+
+                    using (var read = com.ExecuteReader())
+                    {
+                        if (read.Read())
+                        {
+                            IDenroll = int.Parse(read["IdEnrollment"].ToString());
+                        } else
+                        {
+                            read.Close();
+
+                            using (var com2 = new SqlCommand())
+                            {
+                                com2.Connection = con;
+                                com2.Transaction = tran;
+                                com2.CommandText = "SELECT MAX(e.IdEnrollment) as IdEnrollment FROM Enrollment e";
+
+
+                                using (var read2 = com2.ExecuteReader())
+                                {
+                                    if(read2.Read())
+                                    {
+                                        IDenroll = (int.Parse(read2["IdEnrollment"].ToString())) + 1;
+
+                                    }
+                                    read2.Close();
+                                }
+
+                            }
+
+
+                        }
+                    }
+
+                }
+                
+
+
+
+            }
+            return null;
+
+
+
         }
 
 
@@ -119,35 +198,6 @@ namespace APBD03.Services
 
 
 
-
-
-        public void PromoteStudents(int semester, string studies)
-        {
-            throw new NotImplementedException();
-        }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         Student IStudentsDbService.GetStudent(string indexNumber)
         {
             using (var sqlConnection = new SqlConnection(@"Data Source=db-mssql;Initial Catalog=s18648;Integrated Security=True"))
@@ -159,7 +209,7 @@ namespace APBD03.Services
                                             "from Student s " +
                                             "join Enrollment e on e.IdEnrollment = s.IdEnrollment " +
                                             "join Studies st on st.IdStudy = e.IdStudy;+" +
-                                            "Where s.IndexNumber = @index";
+                                            "Where s.IndexNumber = @indexNumber";
                     sqlConnection.Open();
                     var response = command.ExecuteReader();
 
@@ -180,6 +230,49 @@ namespace APBD03.Services
                 }
 
             }
+
+        }
+
+
+        public EnrollStudentResponse PromoteStudents(int semester, string studies)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Student GetStudentByIndex(string index)
+        {
+
+            using (var sqlConnection = new SqlConnection(@"Data Source=db-mssql;Initial Catalog=s18648;Integrated Security=True"))
+            {
+                using (var command = new SqlCommand())
+                {
+                    command.Connection = sqlConnection;
+                    command.CommandText = "select s.FirstName, s.LastName, s.BirthDate, st.Name as Studies, e.Semester " +
+                                            "from Student s " +
+                                            "join Enrollment e on e.IdEnrollment = s.IdEnrollment " +
+                                            "join Studies st on st.IdStudy = e.IdStudy;+" +
+                                            "Where s.IndexNumber = @indexNumber";
+                    sqlConnection.Open();
+                    var response = command.ExecuteReader();
+
+                    response.Read();
+
+
+                    var st = new Student
+                    {
+                        FirstName = response["FirstName"].ToString(),
+                        LastName = response["LastName"].ToString(),
+                        Studies = response["Studies"].ToString(),
+                        BirthDate = DateTime.Parse(response["BirthDate"].ToString()),
+                        Semester = int.Parse(response["Semester"].ToString())
+                    };
+
+
+                    return st;
+                }
+
+            }
+
 
         }
     }

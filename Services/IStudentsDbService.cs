@@ -1,4 +1,5 @@
 ﻿using APBD03.DTOs.Requests;
+using APBD03.DTOs.Responses;
 using APBD03.Models;
 using System;
 using System.Collections;
@@ -16,9 +17,13 @@ namespace APBD03.Services
         Student GetStudent(string indexNumber);
         IEnumerable GetStudentSemester(string index);
 
-        void EnrollStudent(EnrollStudentRequest req);
+        EnrollStudentResponse EnrollStudent(EnrollStudentRequest req);
 
-        void PromoteStudents(int semester, string studies);
+        EnrollStudentResponse PromoteStudents(int semester, string studies);
+
+        public void SaveLogData(string method, string path, string body, string query);
+
+        public Student GetStudentByIndex(string index);
 
     }
 }
